@@ -2,6 +2,7 @@ package Juicy
 
 import (
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
+	raft "github.com/salamer/naive_raft"
 )
 
 const (
@@ -12,6 +13,8 @@ const (
 type DB struct {
 	Tree *rbt.Tree
 	name string
+	raft *raft.Node
+	Mode int
 }
 
 type Node struct {
@@ -20,10 +23,38 @@ type Node struct {
 	value interface{}
 }
 
-func NewDB(name string, mode int) *DB {
-	return &DB{
-		Tree: rbt.NewWithIntComparator(),
-		name: name,
+type RaftConf struct {
+	ID       int
+	Name     string
+	ConfPath string
+	Port     int
+	Host     string
+}
+
+func NewDB(name string, mode int, conf RaftConf) *DB {
+	if mode == SINGLE {
+		return &DB{
+			Tree: rbt.NewWithIntComparator(),
+			name: name,
+			raft: nil,
+			Mode: SINGLE,
+		}
+	} else {
+		return &DB{
+			Tree: rbt.NewWithIntComparator(),
+			name: name,
+			raft: raft.NewNode(conf.Name, conf.ID, conf.Host, conf.Port, conf.ConfPath),
+			Mode: DISTRIBUTED,
+		}
+	}
+}
+
+func (db *DB) Start() error {
+	if db.Mode == SINGLE {
+		return nil
+	} else {
+		db.raft.Run()
+		return nil
 	}
 }
 
