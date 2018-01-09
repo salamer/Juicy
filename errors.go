@@ -2,6 +2,7 @@ package Juicy
 
 import "errors"
 
-const (
-	KeyError = errors.New("key not in database")
+var (
+	KeyError   = errors.New("key not in database")
+	ValueError = errors.New("Value Error")
 )

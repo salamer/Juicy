@@ -4,34 +4,39 @@ import (
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
 )
 
+const (
+	SINGLE = iota
+	DISTRIBUTED
+)
+
 type DB struct {
-	tree *rbt.Tree
+	Tree *rbt.Tree
 	name string
 }
 
 type Node struct {
-	next  *node
+	next  *Node
 	key   string
 	value interface{}
 }
 
-func NewDB(name string) *DB {
+func NewDB(name string, mode int) *DB {
 	return &DB{
-		tree: rbt.NewWithIntComparator(),
+		Tree: rbt.NewWithIntComparator(),
 		name: name,
 	}
 }
 
 func NewNode(key string, value interface{}) *Node {
 	return &Node{
-		key:   string,
+		key:   key,
 		value: value,
 	}
 }
 
 func (db *DB) GetValue(key string) (interface{}, error) {
-	node, r = db.tree.Get(Hash(key))
-	if !r {
+	node, r := SafeString(db.Tree.Get(Hash(key)))
+	if r != nil {
 		return nil, KeyError
 	} else {
 		for node != nil {
@@ -40,14 +45,28 @@ func (db *DB) GetValue(key string) (interface{}, error) {
 			}
 			node = node.next
 		}
+		return node.value, nil
+	}
+}
+
+func (db *DB) GetNode(key string) (*Node, error) {
+	node, r := SafeString(db.Tree.Get(Hash(key)))
+	if r != nil {
+		return nil, KeyError
+	} else {
+		return node, nil
 	}
 }
 
 func (db *DB) SetValue(key string, value interface{}) error {
-	k := Hash(key)
-	if node, r := db.GetValue(k); r {
+	node, r := db.GetNode(key)
+	if r != nil {
+		node = NewNode(key, value)
+		db.Tree.Put(Hash(key), node)
+		return nil
+	} else {
 		haveKey := false
-		for node != nil {
+		for node.next != nil {
 			// for the same key
 			if node.key == key {
 				node.value = value
@@ -55,9 +74,10 @@ func (db *DB) SetValue(key string, value interface{}) error {
 			}
 			node = node.next
 		}
-		node.next = NewNode(k, value)
-	} else {
-		node = NewNode(k, value)
-		db.tree.Put(k, node)
+		if !haveKey {
+			node.next = NewNode(key, value)
+		}
+		return nil
 	}
+
 }
