@@ -1,5 +1,5 @@
 
-# Juicy
+#  Juicy :cocktail:
 
 > "It was all a dream, I used to read Word Up! magazine."
 >
