@@ -1,8 +1,16 @@
 package Juicy
 
 import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+
 	rbt "github.com/emirpasic/gods/trees/redblacktree"
+	pb "github.com/salamer/Juicy/commandpb"
 	raft "github.com/salamer/naive_raft"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 const (
@@ -57,15 +65,6 @@ func NewDB(name string, mode int, conf RaftConf) *DB {
 	}
 }
 
-func (db *DB) Start() error {
-	if db.Mode == SINGLE {
-		return nil
-	} else {
-		db.raft.Run()
-		return nil
-	}
-}
-
 func NewNode(key string, value interface{}) *Node {
 	return &Node{
 		key:   key,
@@ -99,6 +98,7 @@ func (db *DB) GetNode(key string) (*Node, error) {
 
 func (db *DB) SetValue(key string, value interface{}) error {
 	node, r := db.GetNode(key)
+	fmt.Println(db.Tree)
 	if r != nil {
 		node = NewNode(key, value)
 		db.Tree.Put(Hash(key), node)
@@ -155,7 +155,12 @@ func (db *DB) HaveKey(key string) (bool, error) {
 	if r != nil && node != nil {
 		return false, KeyError
 	} else {
-		return true, nil
+		for node != nil {
+			if node.key == key {
+				return true, nil
+			}
+		}
+		return false, KeyError
 	}
 }
 
@@ -169,4 +174,91 @@ func (db *DB) Empty() bool {
 	} else {
 		return false
 	}
+}
+
+func (db *DB) Start() error {
+	lis, err := net.Listen("tcp", "localhost:8000")
+	if err != nil {
+		fmt.Printf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterDBCommandServer(s, db)
+	reflection.Register(s)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+	if db.Mode == SINGLE {
+		return nil
+	} else {
+		db.raft.Run()
+		return nil
+	}
+}
+
+func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandResp, error) {
+	switch in.Command {
+	case pb.CommandReq_Set:
+
+		err := db.SetValue(in.Arg1, in.Arg2)
+		if err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		}
+		return &pb.CommandResp{
+			Success: true,
+			Error:   "", //TODO:finish error
+		}, nil
+
+	case pb.CommandReq_Get:
+		_, err := db.GetValue(in.Arg1)
+		if err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		} else {
+			return &pb.CommandResp{
+				Success: true,
+				Res2:    "aaa",
+			}, nil
+		}
+
+	case pb.CommandReq_Have:
+		r, err := db.HaveKey(in.Arg1)
+		if r && err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		} else {
+			return &pb.CommandResp{
+				Success: true,
+				Error:   "",
+			}, nil
+		}
+
+	case pb.CommandReq_Clear:
+		db.Clear()
+		return &pb.CommandResp{
+			Success: true,
+			Error:   "", //TODO:finish error
+		}, nil
+	case pb.CommandReq_Empty:
+		return &pb.CommandResp{
+			Success: db.Empty(),
+			Error:   "", //TODO:finish error
+		}, nil
+	case pb.CommandReq_Persist:
+		// TODB : db.Persist
+		return &pb.CommandResp{
+			Success: true,
+			Error:   "", //TODO:finish error
+		}, nil
+	}
+	return &pb.CommandResp{
+		Success: false,
+		Error:   MissCommandError.Error(), //TODO:finish error
+	}, nil
 }
