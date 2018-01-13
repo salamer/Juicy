@@ -13,7 +13,7 @@
 
 ### USEING PYTHON CLIENT
 
-> pip install Juicy
+    pip install Juicy
 
 ```Python
 
