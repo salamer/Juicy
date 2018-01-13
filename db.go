@@ -29,7 +29,7 @@ type DB struct {
 type Node struct {
 	next  *Node
 	key   string
-	value interface{}
+	value string
 }
 
 type RaftConf struct {
@@ -65,17 +65,17 @@ func NewDB(name string, mode int, conf RaftConf) *DB {
 	}
 }
 
-func NewNode(key string, value interface{}) *Node {
+func NewNode(key string, value string) *Node {
 	return &Node{
 		key:   key,
 		value: value,
 	}
 }
 
-func (db *DB) GetValue(key string) (interface{}, error) {
+func (db *DB) GetValue(key string) (string, error) {
 	node, r := SafeString(db.Tree.Get(Hash(key)))
 	if r != nil {
-		return nil, KeyError
+		return "", KeyError
 	} else {
 		for node != nil {
 			if node.key == key {
@@ -96,7 +96,7 @@ func (db *DB) GetNode(key string) (*Node, error) {
 	}
 }
 
-func (db *DB) SetValue(key string, value interface{}) error {
+func (db *DB) SetValue(key string, value string) error {
 	node, r := db.GetNode(key)
 	fmt.Println(db.Tree)
 	if r != nil {
@@ -212,7 +212,7 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 		}, nil
 
 	case pb.CommandReq_Get:
-		_, err := db.GetValue(in.Arg1)
+		r, err := db.GetValue(in.Arg1)
 		if err != nil {
 			return &pb.CommandResp{
 				Success: false,
@@ -221,7 +221,7 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 		} else {
 			return &pb.CommandResp{
 				Success: true,
-				Res2:    "aaa",
+				Res2:    r,
 			}, nil
 		}
 
@@ -245,11 +245,27 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 			Success: true,
 			Error:   "", //TODO:finish error
 		}, nil
+
 	case pb.CommandReq_Empty:
 		return &pb.CommandResp{
 			Success: db.Empty(),
 			Error:   "", //TODO:finish error
 		}, nil
+
+	case pb.CommandReq_Delete:
+		err := db.Delete(in.Arg1)
+		if err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		} else {
+			return &pb.CommandResp{
+				Success: true,
+				Error:   "", //TODO:finish error
+			}, nil
+		}
+
 	case pb.CommandReq_Persist:
 		// TODB : db.Persist
 		return &pb.CommandResp{
