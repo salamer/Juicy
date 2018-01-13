@@ -11,6 +11,34 @@
 
 # QUICK START
 
+### USEING PYTHON CLIENT
+
+> pip install Juicy
+
+```Python
+
+>>> from Juicy import Client
+>>> j = Client("localhost",8000)
+>>> j.set("hello","world")
+success: true
+
+>>> j.get("hello")
+success: true
+res2: "world"
+
+>>> j.set("aljun","coder")
+success: true
+
+>>> "aljun" in j
+True
+>>> j.delete("aljun")
+success: true
+
+>>> j.get("aljun")
+error: "key not in database"
+
+```
+
 ### Single Node
 
 ```GO
