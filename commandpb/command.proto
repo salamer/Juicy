@@ -13,7 +13,8 @@ message CommandReq {
         Have = 2;
         Empty = 3;
         Clear = 4;
-        Persist = 5;
+        Delete = 5;
+        Persist = 6;
     }
     Command command = 1;
     string arg1 = 2;
