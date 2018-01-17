@@ -1,7 +1,7 @@
 package Juicy
 
 import (
-	rbt "github.com/emirpasic/gods/trees/redblacktree"
+	rbt "github.com/salamer/RbTree"
 	raft "github.com/salamer/naive_raft"
 )
 
@@ -40,7 +40,7 @@ func GetDBFromFile(filename string) *DB {
 func NewDB(name string, mode int, conf RaftConf) *DB {
 	if mode == SINGLE {
 		return &DB{
-			Tree: rbt.NewWithIntComparator(),
+			Tree: rbt.NewTree(),
 			name: name,
 			raft: nil,
 			Mode: SINGLE,
@@ -48,7 +48,7 @@ func NewDB(name string, mode int, conf RaftConf) *DB {
 		}
 	} else {
 		return &DB{
-			Tree: rbt.NewWithIntComparator(),
+			Tree: rbt.NewTree(),
 			name: name,
 			raft: raft.NewNode(conf.Name, conf.ID, conf.Host, conf.Port, conf.ConfPath),
 			Mode: DISTRIBUTED,
@@ -74,7 +74,7 @@ func NewNode(key string, value interface{}) *Node {
 }
 
 func (db *DB) GetValue(key string) (interface{}, error) {
-	node, r := SafeString(db.Tree.Get(Hash(key)))
+	node, r := SafeString(db.Tree.Find(Hash(key)))
 	if r != nil {
 		return nil, KeyError
 	} else {
@@ -89,7 +89,7 @@ func (db *DB) GetValue(key string) (interface{}, error) {
 }
 
 func (db *DB) GetNode(key string) (*Node, error) {
-	node, r := SafeString(db.Tree.Get(Hash(key)))
+	node, r := SafeString(db.Tree.Find(Hash(key)))
 	if r != nil {
 		return nil, KeyError
 	} else {
@@ -101,7 +101,7 @@ func (db *DB) SetValue(key string, value interface{}) error {
 	node, r := db.GetNode(key)
 	if r != nil {
 		node = NewNode(key, value)
-		db.Tree.Put(Hash(key), node)
+		db.Tree.Insert(Hash(key), node)
 		db.size += 1
 		return nil
 	} else {
@@ -129,7 +129,7 @@ func (db *DB) Delete(key string) error {
 		return r
 	} else {
 		if node.key == key {
-			db.Tree.Remove(Hash(node.key))
+			db.Tree.Delete(Hash(node.key))
 		} else {
 			_node := node.next
 			for _node != nil {

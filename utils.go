@@ -10,8 +10,8 @@ func Hash(s string) int {
 
 //get the key string
 
-func SafeString(a interface{}, b bool) (*Node, error) {
-	if !b {
+func SafeString(a interface{}) (*Node, error) {
+	if a == nil {
 		return nil, KeyError
 	} else {
 		if val, ok := a.(*Node); ok {
