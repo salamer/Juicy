@@ -1,8 +1,16 @@
 package Juicy
 
 import (
+	"context"
+	"log"
+	"net"
+	"strconv"
+
+	pb "github.com/salamer/Juicy/commandpb"
 	rbt "github.com/salamer/RbTree"
 	raft "github.com/salamer/naive_raft"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 )
 
 const (
@@ -11,6 +19,9 @@ const (
 )
 
 type DB struct {
+	port int
+	host string
+
 	Tree *rbt.Tree
 	name string
 	raft *raft.Node
@@ -21,7 +32,7 @@ type DB struct {
 type Node struct {
 	next  *Node
 	key   string
-	value interface{}
+	value string
 }
 
 type RaftConf struct {
@@ -37,7 +48,7 @@ func GetDBFromFile(filename string) *DB {
 	return &DB{}
 }
 
-func NewDB(name string, mode int, conf RaftConf) *DB {
+func NewDB(name string, mode int, conf RaftConf, host string, port int) *DB {
 	if mode == SINGLE {
 		return &DB{
 			Tree: rbt.NewTree(),
@@ -45,38 +56,35 @@ func NewDB(name string, mode int, conf RaftConf) *DB {
 			raft: nil,
 			Mode: SINGLE,
 			size: 0,
+
+			host: host,
+			port: port,
 		}
 	} else {
 		return &DB{
 			Tree: rbt.NewTree(),
 			name: name,
-			raft: raft.NewNode(conf.Name, conf.ID, conf.Host, conf.Port, conf.ConfPath),
+			raft: raft.NewNode(conf.Name, conf.ID, host, port, conf.ConfPath),
 			Mode: DISTRIBUTED,
 			size: 0,
+
+			host: host,
+			port: port,
 		}
 	}
 }
 
-func (db *DB) Start() error {
-	if db.Mode == SINGLE {
-		return nil
-	} else {
-		db.raft.Run()
-		return nil
-	}
-}
-
-func NewNode(key string, value interface{}) *Node {
+func NewNode(key string, value string) *Node {
 	return &Node{
 		key:   key,
 		value: value,
 	}
 }
 
-func (db *DB) GetValue(key string) (interface{}, error) {
+func (db *DB) GetValue(key string) (string, error) {
 	node, r := SafeString(db.Tree.Find(Hash(key)))
 	if r != nil {
-		return nil, KeyError
+		return "", KeyError
 	} else {
 		for node != nil {
 			if node.key == key {
@@ -97,7 +105,7 @@ func (db *DB) GetNode(key string) (*Node, error) {
 	}
 }
 
-func (db *DB) SetValue(key string, value interface{}) error {
+func (db *DB) SetValue(key string, value string) error {
 	node, r := db.GetNode(key)
 	if r != nil {
 		node = NewNode(key, value)
@@ -169,4 +177,105 @@ func (db *DB) Empty() bool {
 	} else {
 		return false
 	}
+}
+
+func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandResp, error) {
+	switch in.Command {
+	case pb.CommandReq_Set:
+
+		err := db.SetValue(in.Arg1, in.Arg2)
+		if err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		}
+		return &pb.CommandResp{
+			Success: true,
+			Error:   "", //TODO:finish error
+		}, nil
+
+	case pb.CommandReq_Get:
+		r, err := db.GetValue(in.Arg1)
+		if err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		} else {
+			return &pb.CommandResp{
+				Success: true,
+				Res2:    r,
+			}, nil
+		}
+
+	case pb.CommandReq_Have:
+		r, err := db.HaveKey(in.Arg1)
+		if r && err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		} else {
+			return &pb.CommandResp{
+				Success: true,
+				Error:   "",
+			}, nil
+		}
+
+	case pb.CommandReq_Clear:
+		db.Clear()
+		return &pb.CommandResp{
+			Success: true,
+			Error:   "", //TODO:finish error
+		}, nil
+
+	case pb.CommandReq_Empty:
+		return &pb.CommandResp{
+			Success: db.Empty(),
+			Error:   "", //TODO:finish error
+		}, nil
+
+	case pb.CommandReq_Delete:
+		err := db.Delete(in.Arg1)
+		if err != nil {
+			return &pb.CommandResp{
+				Success: false,
+				Error:   err.Error(), //TODO:finish error
+			}, nil
+		} else {
+			return &pb.CommandResp{
+				Success: true,
+				Error:   "", //TODO:finish error
+			}, nil
+		}
+
+	case pb.CommandReq_Persist:
+		// TODB : db.Persist
+		return &pb.CommandResp{
+			Success: true,
+			Error:   "", //TODO:finish error
+		}, nil
+	}
+	return &pb.CommandResp{
+		Success: false,
+		Error:   MissCommandError.Error(), //TODO:finish error
+	}, nil
+}
+
+func (db *DB) Start() error {
+	var s *grpc.Server
+	if db.Mode != SINGLE {
+		s = db.raft.GetGRPCHandler()
+	}
+	lis, err := net.Listen("tcp", db.host+":"+strconv.Itoa(db.port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	pb.RegisterDBCommandServer(s, db)
+	reflection.Register(s)
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed  to serve: %v", err)
+	}
+
 }
