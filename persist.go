@@ -10,6 +10,7 @@ import (
 
 const SEPARATOR = " "
 const SEPARATOR_PLACEHOLER = "\t"
+const Newline = "\n"
 
 func (db *DB) Persist(filename string) {
 	_, err := os.Stat(filename)
@@ -46,6 +47,7 @@ func (db *DB) serialize(filename string, node *rbt.Node) {
 
 			_node = _node.next
 		}
+		data = append(data[:], []byte(Newline)...)
 		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
 			log.Println("open file err:", err)
