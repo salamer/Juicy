@@ -2,6 +2,7 @@ package Juicy
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -82,6 +83,7 @@ func NewNode(key string, value string) *Node {
 }
 
 func (db *DB) GetValue(key string) (string, error) {
+	fmt.Println("node", db.Tree.Find(Hash(key)), Hash(key))
 	node, r := SafeString(db.Tree.Find(Hash(key)))
 	if r != nil {
 		return "", KeyError
@@ -109,6 +111,7 @@ func (db *DB) SetValue(key string, value string) error {
 	node, r := db.GetNode(key)
 	if r != nil {
 		node = NewNode(key, value)
+		fmt.Println("hash", Hash(key))
 		db.Tree.Insert(Hash(key), node)
 		db.size += 1
 		return nil
@@ -183,7 +186,7 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 	switch in.Command {
 	case pb.CommandReq_Set:
 
-		err := db.SetValue(in.Arg1, in.Arg2)
+		err := db.SetValue(in.Key, in.Value)
 		if err != nil {
 			return &pb.CommandResp{
 				Success: false,
@@ -196,7 +199,8 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 		}, nil
 
 	case pb.CommandReq_Get:
-		r, err := db.GetValue(in.Arg1)
+		r, err := db.GetValue(in.Key)
+		fmt.Println(r)
 		if err != nil {
 			return &pb.CommandResp{
 				Success: false,
@@ -205,12 +209,12 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 		} else {
 			return &pb.CommandResp{
 				Success: true,
-				Res2:    r,
+				Value:   r,
 			}, nil
 		}
 
 	case pb.CommandReq_Have:
-		r, err := db.HaveKey(in.Arg1)
+		r, err := db.HaveKey(in.Key)
 		if r && err != nil {
 			return &pb.CommandResp{
 				Success: false,
@@ -234,10 +238,11 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 		return &pb.CommandResp{
 			Success: db.Empty(),
 			Error:   "", //TODO:finish error
+			Empty:   db.Empty(),
 		}, nil
 
 	case pb.CommandReq_Delete:
-		err := db.Delete(in.Arg1)
+		err := db.Delete(in.Key)
 		if err != nil {
 			return &pb.CommandResp{
 				Success: false,
@@ -251,7 +256,7 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 		}
 
 	case pb.CommandReq_Persist:
-		// TODB : db.Persist
+		db.Persist(in.Key)
 		return &pb.CommandResp{
 			Success: true,
 			Error:   "", //TODO:finish error
@@ -263,10 +268,12 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 	}, nil
 }
 
-func (db *DB) Start() error {
+func (db *DB) Start() {
 	var s *grpc.Server
 	if db.Mode != SINGLE {
 		s = db.raft.GetGRPCHandler()
+	} else {
+		s = grpc.NewServer()
 	}
 	lis, err := net.Listen("tcp", db.host+":"+strconv.Itoa(db.port))
 	if err != nil {
@@ -277,5 +284,4 @@ func (db *DB) Start() error {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed  to serve: %v", err)
 	}
-
 }
