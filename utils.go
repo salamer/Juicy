@@ -1,6 +1,8 @@
 package Juicy
 
-import "hash/fnv"
+import (
+	"hash/fnv"
+)
 
 func Hash(s string) int {
 	h := fnv.New32a()

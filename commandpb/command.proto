@@ -19,6 +19,7 @@ message CommandReq {
     Command command = 1;
     string key = 2;
     string value = 3;
+    string filename = 4;
 }
 
 message CommandResp {

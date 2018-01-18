@@ -2,7 +2,6 @@ package Juicy
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"strconv"
@@ -83,7 +82,6 @@ func NewNode(key string, value string) *Node {
 }
 
 func (db *DB) GetValue(key string) (string, error) {
-	fmt.Println("node", db.Tree.Find(Hash(key)), Hash(key))
 	node, r := SafeString(db.Tree.Find(Hash(key)))
 	if r != nil {
 		return "", KeyError
@@ -111,7 +109,6 @@ func (db *DB) SetValue(key string, value string) error {
 	node, r := db.GetNode(key)
 	if r != nil {
 		node = NewNode(key, value)
-		fmt.Println("hash", Hash(key))
 		db.Tree.Insert(Hash(key), node)
 		db.size += 1
 		return nil
@@ -200,7 +197,6 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 
 	case pb.CommandReq_Get:
 		r, err := db.GetValue(in.Key)
-		fmt.Println(r)
 		if err != nil {
 			return &pb.CommandResp{
 				Success: false,
@@ -256,7 +252,7 @@ func (db *DB) CommandRPC(ctx context.Context, in *pb.CommandReq) (*pb.CommandRes
 		}
 
 	case pb.CommandReq_Persist:
-		db.Persist(in.Key)
+		db.Persist(in.Filename)
 		return &pb.CommandResp{
 			Success: true,
 			Error:   "", //TODO:finish error
