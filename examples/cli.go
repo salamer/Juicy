@@ -14,5 +14,10 @@ func main() {
 	fmt.Println(c.Get("aaaa"))
 	fmt.Println(c.Get("helloq"))
 	fmt.Println(c.Get("hahah"))
+	fmt.Println(c.Delete("hahah"))
+	fmt.Println(c.Get("hahah"))
 	c.Persist("aaa.txt")
+	fmt.Println(c.Empty())
+	c.Clear()
+	fmt.Println(c.Empty())
 }
