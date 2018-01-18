@@ -17,13 +17,14 @@ message CommandReq {
         Persist = 6;
     }
     Command command = 1;
-    string arg1 = 2;
-    string arg2 = 3;
+    string key = 2;
+    string value = 3;
 }
 
 message CommandResp {
     bool success = 1;
     string error = 2;
-    bool res1 = 3;//for the bool type response
-    string res2 = 4; 
+    bool empty = 3;
+    bool have = 4;
+    string value = 5; 
 }
