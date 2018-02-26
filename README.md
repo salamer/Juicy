@@ -76,7 +76,7 @@ import (
 )
 
 const ConfPath = {confpath}      //your node conf json file
-const ID = {id}                  // your node id
+const ID = {id}                  //your node id
 const Name = {name}              //your node name
 const Host = {host}              //your raft node host
 const Port = {port}              //your raft node port
