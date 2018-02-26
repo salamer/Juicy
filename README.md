@@ -5,6 +5,8 @@
 >
 > -- <Juicy> The Notorious B.I.G.
 
+ Juicy is a simple memory key/value database. it use [naive_raft](https://github.com/salamer/naive_raft).It is not finished yet, only partial functions are supported.
+
 # INSTALL
 
     go get -u github.com/salamer/Juicy
@@ -35,6 +37,7 @@ func main() {
 	fmt.Println(c.Get("hahah"))
 	c.Persist("aaa.txt")
 	fmt.Println(c.Empty())
+	c.Persist("db.juicy")
 	c.Clear()
 	fmt.Println(c.Empty())
 }
@@ -95,6 +98,11 @@ func main() {
 
 
 ```
+
+## TODO
+
+* Compress
+* Better Persist
 
 ## LICENSE
 Copyright © 2018 by Aljun
