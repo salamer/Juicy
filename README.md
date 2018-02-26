@@ -5,7 +5,7 @@
 >
 > -- <Juicy> The Notorious B.I.G.
 
- Juicy is a simple memory key/value database. it use [naive_raft](https://github.com/salamer/naive_raft).It is not finished yet, only partial functions are supported.
+ Juicy is a simple memory key/value database. it use [naive_raft](https://github.com/salamer/naive_raft) to support distributed consistency.It is not finished yet, only partial functions are supported.
 
 # INSTALL
 
